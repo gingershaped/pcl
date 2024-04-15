@@ -134,12 +134,6 @@ object Parser {
     }
 }
 
-class ParseException(val range: IntRange, message: String) : Exception(message) {
-    override fun toString() = "ParseException: " + message
-    fun highlight(program: String) =
-        program + "\n" + " ".repeat(range.start) + "^" + "~".repeat(range.endInclusive - range.start)
-}
-
 internal data class FunctionStackEntry(val body: MutableList<Node>, val start: Int)
 
 sealed class Token {
