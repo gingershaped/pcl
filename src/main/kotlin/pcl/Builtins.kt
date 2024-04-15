@@ -10,6 +10,12 @@ import kotlin.reflect.full.isSubtypeOf
 import kotlin.reflect.full.valueParameters
 
 object Builtins {
+    fun add(a: Double, b: Double) = listOf(StackValue.Number(a + b))
+    fun sub(a: Double, b: Double) = listOf(StackValue.Number(a - b))
+    fun div(a: Double, b: Double) = listOf(StackValue.Number(a / b))
+    fun mul(a: Double, b: Double) = listOf(StackValue.Number(a * b))
+    fun mod(a: Double, b: Double) = listOf(StackValue.Number(a.mod(b)))
+
     @Suppress("UNCHECKED_CAST")
     val builtins = Builtins::class.memberFunctions.filter {
         it.returnType.isSubtypeOf(typeOf<List<StackValue<*>>>())
