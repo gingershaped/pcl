@@ -1,5 +1,8 @@
 package pcl
 
+import kotlin.runCatching
+import pcl.WHITESPACE
+
 internal val DIGIT_CHARS = '0'..'9'
 internal val WHITESPACE = "\n\t ".toCharArray()
 
@@ -20,25 +23,34 @@ object Parser {
         for ((position, token) in tokens) {
             when (token) {
                 '\'', '"' -> {
-                    val endPos: Int
-                    buildString {
-                        while (true) {
-                            try {
-                                val (charPos, char) = tokens.next()
-                                when (char) {
+                    runCatching {
+                        val endPos: Int
+                        buildString {
+                            while (true) {
+                                val char = tokens.nextOrNull()
+                                if (char == null) {
+                                    throw ParseException(position..program.length - 1, "Unterminated string")
+                                }
+                                when (char.value) {
                                     token -> {
-                                        endPos = charPos
+                                        endPos = char.index
                                         break
                                     }
                                     '\\' -> append(tokens.nextOrNull()?.value
                                         ?: throw ParseException((position..program.length - 1), "Unterminated string"))
-                                    else -> append(char)
+                                    else -> append(char.value)
                                 }
-                            } catch (e: NoSuchElementException) {
-                                throw ParseException(position..program.length - 1, "Unterminated string")
                             }
+                        } to endPos
+                    }.map { (string, endPos) ->
+                        Token.Str(position..endPos, string)
+                    }.getOrElse {
+                        if (it is ParseException) {
+                            Token.Error(it.range, it.message!!)
+                        } else {
+                            throw it
                         }
-                    }.let { Token.Str(position..endPos, it) }
+                    }
                 }
                 in DIGIT_CHARS, '-' -> {
                     if (token == '-' && tokens.peekNext().value !in DIGIT_CHARS) {
@@ -66,7 +78,7 @@ object Parser {
                             try {
                                 Token.Number(position..endPos, it.toDouble())
                             } catch (e: NumberFormatException) {
-                                throw ParseException(position..endPos, "Malformed number: " + e.message)
+                                Token.Error(position..endPos, "Malformed number: " + e.message)
                             }
                         }
                     }
@@ -77,26 +89,49 @@ object Parser {
                 '%' -> Token.Mod(position..position)
                 '{' -> Token.OpenFunction(position..position)
                 '}' -> Token.CloseFunction(position..position)
-                in WHITESPACE -> null
-                else -> {
+                in WHITESPACE -> {
                     val endPos: Int
-                    buildString {
-                        append(token)
-                        while (true) {
-                            val char = tokens.nextOrNull()
-                            if (char == null) {
-                                endPos = program.length
+                    while (true) {
+                        when (val char = tokens.nextOrNull()) {
+                            null -> {
+                                endPos = program.length - 1
                                 break
                             }
-                            if (char.value in WHITESPACE) {
-                                endPos = char.index
-                                break
+                            else -> {
+                                if (char.value !in WHITESPACE) {
+                                    tokens.previous()
+                                    endPos = char.index - 1
+                                    break
+                                }
                             }
-                            append(char.value)
                         }
-                    }.let { Token.Identifier(position..<endPos, it) }
+                    }
+                    Token.Whitespace(position..endPos)
                 }
-            }?.let { add(it) }
+                else -> {
+                    if (!token.isLetterOrDigit()) {
+                        Token.Error(position..position, "Unknown token")
+                    } else {
+                        val endPos: Int
+                        buildString {
+                            append(token)
+                            while (true) {
+                                val char = tokens.nextOrNull()
+                                if (char == null) {
+                                    endPos = program.length - 1
+                                    break
+                                }
+                                if (!char.value.isLetterOrDigit()) {
+                                    tokens.previous()
+                                    endPos = char.index - 1
+                                    break
+                                }
+                                append(char.value)
+                            }
+                        }.let { Token.Identifier(position..endPos, it) }
+                    }
+                }
+            }.let { add(it) }
         }
     }
 
@@ -127,6 +162,9 @@ object Parser {
                 is Token.Div -> Node.Identifier(token.range, "div")
                 is Token.Mul -> Node.Identifier(token.range, "mul")
                 is Token.Mod -> Node.Identifier(token.range, "mod")
+
+                is Token.Whitespace -> null
+                is Token.Error -> throw ParseException(token.range, token.message)
             }?.let { functionStack.last().body.add(it) }
         }
         return functionStack.singleOrNull()?.body
@@ -151,6 +189,9 @@ sealed class Token {
     data class Mod(override val range: IntRange) : Token()
     data class OpenFunction(override val range: IntRange) : Token()
     data class CloseFunction(override val range: IntRange) : Token()
+
+    data class Whitespace(override val range: IntRange) : Token()
+    data class Error(override val range: IntRange, val message: String) : Token()
 
     override open fun toString() = this::class.simpleName!!
 }
