@@ -21,7 +21,7 @@ object Interpreter {
                     val argTypes = args.map { it::class }
                     val impl = builtin.overloads[argTypes]?.impl
                         ?: throw BuiltinException(node.range, "Builtin ${builtin.name} has no overload for ${if (argTypes.size == 1) "argument" else "arguments"} of type (${argTypes.map { it.simpleName }.joinToString(", ")})!")
-                    val argArray = (args.map { it.value } + function.takeIf { builtin.takesCallingFunction }).filterNotNull().toTypedArray()
+                    val argArray = (listOf(function.takeIf { builtin.takesCallingFunction }) + args.map { it.value }).filterNotNull().toTypedArray()
 
                     impl.runCatching { call(Builtins, *argArray) }.onFailure {
                         if (it is PclException) {
@@ -40,7 +40,7 @@ object Interpreter {
                     function.stack.add(StackValue.Str(node.value))
                 }
                 is Node.Function -> {
-                    function.stack.add(StackValue.Function(Function(node.body, mutableListOf(), function)))
+                    function.stack.add(StackValue.Function(node.body))
                 }
             }
         }
@@ -76,5 +76,5 @@ sealed class StackValue<out T> {
     abstract val value: T
     data class Number(override val value: Double) : StackValue<Double>()
     data class Str(override val value: String) : StackValue<String>()
-    data class Function(override val value: pcl.Function): StackValue<pcl.Function>()
+    data class Function(override val value: List<Node>): StackValue<List<Node>>()
 }

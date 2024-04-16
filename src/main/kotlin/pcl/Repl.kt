@@ -167,7 +167,7 @@ fun repl() {
                         style(functionStyle)
                         append("{ ")
                         style { AttributedStyle.DEFAULT }
-                        append(PCLHighlighter.highlight(reader, item.value.body.sourceify()))
+                        append(PCLHighlighter.highlight(reader, item.value.sourceify()))
                         style(functionStyle)
                         append(" }")
                     }

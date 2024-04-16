@@ -21,6 +21,12 @@ object Builtins {
     @Doc("Concatenate two strings")
     fun add(a: String, b: String) = listOf(StackValue.Str(a + b))
 
+    @Doc("Call a function")
+    fun call(callingFunction: Function, function: List<Node>) = Function(function, mutableListOf(), callingFunction).let {
+        Interpreter.run(it)
+        it.stack
+    }
+
     @Suppress("UNCHECKED_CAST")
     val builtins = Builtins::class.memberFunctions.filter {
         it.returnType.isSubtypeOf(typeOf<List<StackValue<*>>>())
@@ -36,16 +42,15 @@ object Builtins {
             "All overloads for builtin function $name must have the same number of parameters!"
         }
         BuiltinFunction(
-            name, arity, takesCallingFunction,
+            name, arity - if (takesCallingFunction) 1 else 0, takesCallingFunction,
             overloads.map { overload ->
-                overload.valueParameters.map { param ->
-                    val paramType = param.type.classifier!! as? KClass<*>
-                        ?: throw IllegalStateException()
+                overload.valueParameters.drop(if (takesCallingFunction) 1 else 0).map { param ->
+                    val paramType = param.type
                     when (paramType) {
-                        Double::class -> StackValue.Number::class
-                        String::class -> StackValue.Str::class
-                        Function::class -> StackValue.Function::class
-                        else -> error("Builtin function ${overload.name} has invalid type ${paramType.qualifiedName} for parameter ${param.name}!")
+                        typeOf<Double>() -> StackValue.Number::class
+                        typeOf<String>() -> StackValue.Str::class
+                        typeOf<List<Node>>() -> StackValue.Function::class
+                        else -> error("Builtin function ${overload.name} has invalid type ${paramType} for parameter ${param.name}!")
                     }
                 } to BuiltinFunction.Overload(
                     overload as KFunction<List<StackValue<*>>>,
