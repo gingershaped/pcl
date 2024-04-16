@@ -19,7 +19,7 @@ object Interpreter {
 
                     val args = function.stack.pop(builtin.arity)
                     val argTypes = args.map { it::class }
-                    val impl = builtin.overloads[argTypes]
+                    val impl = builtin.overloads[argTypes]?.impl
                         ?: throw BuiltinException(node.range, "Builtin ${builtin.name} has no overload for ${if (argTypes.size == 1) "argument" else "arguments"} of type (${argTypes.map { it.simpleName }.joinToString(", ")})!")
                     val argArray = (args.map { it.value } + function.takeIf { builtin.takesCallingFunction }).filterNotNull().toTypedArray()
 
@@ -50,6 +50,27 @@ object Interpreter {
 fun <T> MutableList<T>.pop(amount: Int = 1) = (0..<amount).map { removeAt(size - 1) }.reversed()
 
 data class Function(val body: List<Node>, val stack: MutableList<StackValue<*>>, val parent: Function?)
+
+fun Collection<Node>.sourceify(): String = buildList {
+    for (node in this@sourceify) {
+        when (node) {
+            is Node.Number -> {
+                add(node.value)
+            }
+            is Node.Str -> {
+                add("\"${node.value}\"")
+            }
+            is Node.Identifier -> {
+                add(node.name)
+            }
+            is Node.Function -> {
+                add("{")
+                add(node.body.sourceify())
+                add("}")
+            }
+        }
+    }
+}.joinToString(" ")
 
 sealed class StackValue<out T> {
     abstract val value: T

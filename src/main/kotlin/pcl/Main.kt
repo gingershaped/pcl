@@ -62,7 +62,7 @@ class PCL : CliktCommand() {
 
         if (program != null) {
             if (tokenize) {
-                println(Parser.parse(Parser.tokenize(program)))
+                println(Parser.tokenize(program))
                 return
             }
             val stack = try {
@@ -70,7 +70,8 @@ class PCL : CliktCommand() {
             } catch (e: PclException) {
                 if (!quiet) {
                     System.err.println("At position ${e.range.start + 1}:")
-                    System.err.println(e.highlight(program))
+                    System.err.println(program)
+                    System.err.println(" ".repeat(e.range.start) + "^" + "~".repeat(e.range.endInclusive - e.range.start))
                     System.err.println(e.stackTraceToString())
                 }
                 throw ProgramResult(-1)
@@ -78,6 +79,8 @@ class PCL : CliktCommand() {
             if (stackFormat != StackFormat.HIDE && !quiet) {
                 println(stack.map { it.value.toString() }.joinToString(stackFormat.sep))
             }
+        } else {
+            repl()
         }
     }
 
