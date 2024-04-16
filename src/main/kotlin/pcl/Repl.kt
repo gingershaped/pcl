@@ -142,7 +142,7 @@ fun repl() {
                 style { AttributedStyle.DEFAULT.bold() }
                 appendLine(" ".repeat(e.range.start) + "^".repeat((e.range.endInclusive - e.range.start) + 1))
                 style { AttributedStyle.DEFAULT.foreground(AttributedStyle.RED).bold() }
-                if (e is BuiltinInvokeException) {
+                if (e is BuiltinBorkedException) {
                     appendLine(e.stackTraceToString())
                 } else {
                     appendLine(e.toString())

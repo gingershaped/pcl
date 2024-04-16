@@ -11,6 +11,8 @@ import kotlin.reflect.full.valueParameters
 
 internal annotation class Doc(val doc: String)
 
+internal class BuiltinRuntimeError(message: String) : Exception(message)
+
 object Builtins {
     fun add(a: Double, b: Double) = listOf(StackValue.Number(a + b))
     fun sub(a: Double, b: Double) = listOf(StackValue.Number(a - b))
@@ -26,6 +28,10 @@ object Builtins {
         Interpreter.run(it)
         it.stack
     }
+
+    @Doc("Pop a value from the parent stack and push it to this stack")
+    fun take(callingFunction: Function) = callingFunction.parent?.stack?.pop(1)
+        ?: throw BuiltinRuntimeError("Cannot call take without a parent function")
 
     @Suppress("UNCHECKED_CAST")
     val builtins = Builtins::class.memberFunctions.filter {

@@ -6,5 +6,6 @@ open class PclException(val range: IntRange, message: String, cause: Exception? 
 
 class ParseException(range: IntRange, message: String) : PclException(range, message)
 class BuiltinException(range: IntRange, message: String) : PclException(range, message)
-class BuiltinInvokeException(range: IntRange, message: String, cause: Exception?) : PclException(range, message, cause)
+class ValueException(range: IntRange, message: String) : PclException(range, message)
+class BuiltinBorkedException(range: IntRange, message: String, cause: Exception?) : PclException(range, message, cause)
 class TypeException(range: IntRange, message: String) : PclException(range, message)

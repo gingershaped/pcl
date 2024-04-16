@@ -1,5 +1,7 @@
 package pcl
 
+import java.lang.reflect.InvocationTargetException
+
 
 object Interpreter {
     fun run(body: List<Node>): List<StackValue<*>> {
@@ -24,10 +26,16 @@ object Interpreter {
                     val argArray = (listOf(function.takeIf { builtin.takesCallingFunction }) + args.map { it.value }).filterNotNull().toTypedArray()
 
                     impl.runCatching { call(Builtins, *argArray) }.onFailure {
-                        if (it is PclException) {
-                            throw it
-                        } else {
-                            throw BuiltinInvokeException(node.range, "An internal exception occured in builtin ${node.name}!", it as? Exception)
+                        when (
+                            val error = if (it is InvocationTargetException) {
+                                it.cause ?: it
+                            } else {
+                                it
+                            }
+                        ) {
+                            is BuiltinRuntimeError -> throw BuiltinException(node.range, error.message!!)
+                            is PclException -> throw error
+                            else -> throw BuiltinBorkedException(node.range, "An internal exception occured in builtin ${node.name}!", error as? Exception)
                         }
                     }.onSuccess {
                         function.stack.addAll(it)
