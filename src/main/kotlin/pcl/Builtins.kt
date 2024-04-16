@@ -9,12 +9,17 @@ import kotlin.reflect.full.isSubclassOf
 import kotlin.reflect.full.isSubtypeOf
 import kotlin.reflect.full.valueParameters
 
+internal annotation class Doc(val doc: String)
+
 object Builtins {
     fun add(a: Double, b: Double) = listOf(StackValue.Number(a + b))
     fun sub(a: Double, b: Double) = listOf(StackValue.Number(a - b))
     fun div(a: Double, b: Double) = listOf(StackValue.Number(a / b))
     fun mul(a: Double, b: Double) = listOf(StackValue.Number(a * b))
     fun mod(a: Double, b: Double) = listOf(StackValue.Number(a.mod(b)))
+
+    @Doc("Concatenate two strings")
+    fun add(a: String, b: String) = listOf(StackValue.Str(a + b))
 
     @Suppress("UNCHECKED_CAST")
     val builtins = Builtins::class.memberFunctions.filter {
@@ -42,10 +47,14 @@ object Builtins {
                         Function::class -> StackValue.Function::class
                         else -> error("Builtin function ${overload.name} has invalid type ${paramType.qualifiedName} for parameter ${param.name}!")
                     }
-                } to overload as KFunction<List<StackValue<*>>>
+                } to BuiltinFunction.Overload(
+                    overload as KFunction<List<StackValue<*>>>,
+                    (overload.annotations.singleOrNull { it is Doc } as Doc?)?.doc
+                )
             }.toMap()
         )
     }
 }
-
-data class BuiltinFunction(val name: String, val arity: Int, val takesCallingFunction: Boolean, val overloads: Map<List<KClass<out StackValue<Any>>>, KFunction<List<StackValue<*>>>>)
+data class BuiltinFunction(val name: String, val arity: Int, val takesCallingFunction: Boolean, val overloads: Map<List<KClass<out StackValue<Any>>>, Overload>) {
+    data class Overload(val impl: KFunction<List<StackValue<*>>>, val doc: String?)
+}
