@@ -14,24 +14,73 @@ internal annotation class Doc(val doc: String)
 internal class BuiltinRuntimeError(message: String) : Exception(message)
 
 object Builtins {
+    // Math
     fun add(a: Double, b: Double) = listOf(StackValue.Number(a + b))
     fun sub(a: Double, b: Double) = listOf(StackValue.Number(a - b))
     fun div(a: Double, b: Double) = listOf(StackValue.Number(a / b))
     fun mul(a: Double, b: Double) = listOf(StackValue.Number(a * b))
     fun mod(a: Double, b: Double) = listOf(StackValue.Number(a.mod(b)))
 
+    @Doc("Push every number in [from, to] (inclusive)")
+    fun range(from: Double, to: Double) = (from.toInt()..to.toInt()).toList().map { StackValue.Number(it.toDouble()) }
+
+
+    // Logic
+    fun min(a: Double, b: Double) = listOf(StackValue.Number(listOf(a, b).min()))
+    fun max(a: Double, b: Double) = listOf(StackValue.Number(listOf(a, b).max()))
+
+    @Doc("Push 1 if <value> is truthy, else 0")
+    fun truthify(value: StackValue<*>) = listOf(StackValue.Number(if (truthy(value)) 1.0 else 0.0))
+
+    @Doc("If <which> is truthy, push <a>; else, push <b>")
+    fun switchpush(which: StackValue<*>, a: StackValue<*>, b: StackValue<*>) = listOf(
+        if (truthy(which)) {
+            a
+        } else {
+            b
+        }
+    )
+
+
+    // String manipulation
     @Doc("Concatenate two strings")
     fun add(a: String, b: String) = listOf(StackValue.Str(a + b))
 
+    @Doc("Push the length of a string")
+    fun length(string: String) = listOf(StackValue.Number(string.length.toDouble()))
+
+
+    // Functions
     @Doc("Call a function")
     fun call(callingFunction: Function, function: List<Node>) = Function(function, mutableListOf(), callingFunction).let {
         Interpreter.run(it)
         it.stack
     }
 
+
+    // Stack manipulation
     @Doc("Pop a value from the parent stack and push it to this stack")
     fun take(callingFunction: Function) = callingFunction.parent?.stack?.pop(1)
         ?: throw BuiltinRuntimeError("Cannot call take without a parent function")
+
+    @Doc("Duplicate the top value")
+    fun dup(callingFunction: Function) = listOf(callingFunction.stack.last())
+    
+    @Doc("Drop the top value")
+    fun drop(callingFunction: Function) = listOf<StackValue<*>>().also {
+        callingFunction.stack.pop(1)
+    }
+
+    @Doc("Drop every value except for the top")
+    fun keeplast(callingFunction: Function) = listOf(callingFunction.stack.last()).also {
+        callingFunction.stack.clear()
+    }
+
+    fun truthy(value: StackValue<*>) = when(value) {
+        is StackValue.Number -> value.value != 0.0
+        is StackValue.Str -> value.value.isNotEmpty()
+        is StackValue.Function -> true
+    }
 
     @Suppress("UNCHECKED_CAST")
     val builtins = Builtins::class.memberFunctions.filter {
