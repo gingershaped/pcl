@@ -151,29 +151,34 @@ fun repl() {
             continue
         }
         AttributedStringBuilder().apply {
-            for ((index, item) in stack.withIndex()) {
-                when (item) {
-                    is StackValue.Number -> {
-                        style(numberStyle)
-                        append(item.value.toString())
+            if (stack.isEmpty()) {
+                style { AttributedStyle.DEFAULT.faint() }
+                append("stack is empty")
+            } else {
+                for ((index, item) in stack.withIndex()) {
+                    when (item) {
+                        is StackValue.Number -> {
+                            style(numberStyle)
+                            append(item.value.toString())
+                        }
+                        is StackValue.Str -> {
+                            style(stringStyle)
+                            append('"')
+                            append(item.value)
+                            append('"')
+                        }
+                        is StackValue.Function -> {
+                            style(functionStyle)
+                            append("{ ")
+                            style { AttributedStyle.DEFAULT }
+                            append(PCLHighlighter.highlight(reader, item.value.sourceify()))
+                            style(functionStyle)
+                            append(" }")
+                        }
                     }
-                    is StackValue.Str -> {
-                        style(stringStyle)
-                        append('"')
-                        append(item.value)
-                        append('"')
+                    if (index != stack.lastIndex) {
+                        append("\n")
                     }
-                    is StackValue.Function -> {
-                        style(functionStyle)
-                        append("{ ")
-                        style { AttributedStyle.DEFAULT }
-                        append(PCLHighlighter.highlight(reader, item.value.sourceify()))
-                        style(functionStyle)
-                        append(" }")
-                    }
-                }
-                if (index != stack.lastIndex) {
-                    append("\n")
                 }
             }
         }.println(terminal)
