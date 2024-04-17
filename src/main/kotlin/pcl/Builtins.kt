@@ -52,63 +52,63 @@ object Builtins {
 
     // Functions
     @Doc("Call a function")
-    fun call(callingFunction: Function, function: List<Node>) = Function(function, mutableListOf(), callingFunction).let {
+    fun call(ctx: CallContext, function: List<Node>) = Function(function, mutableListOf(), ctx.function).let {
         Interpreter.run(it)
         it.stack
     }
 
     // Control flow
     @Doc("Call a function once for every value on the stack")
-    fun map(callingFunction: Function, function: List<Node>) = callingFunction.stack.toList().flatMap {
-        Function(function, mutableListOf(it), callingFunction).also {
+    fun map(ctx: CallContext, function: List<Node>) = ctx.function.stack.toList().flatMap {
+        Function(function, mutableListOf(it), ctx.function).also {
             Interpreter.run(it)
         }.stack
     }
 
     // Stack manipulation
     @Doc("Pop a value from the parent stack and push it to this stack")
-    fun take(callingFunction: Function) = callingFunction.parent?.stack?.pop(1)
+    fun take(ctx: CallContext) = ctx.function.parent?.stack?.pop(1)
         ?: throw BuiltinRuntimeError("Cannot call take without a parent function")
 
     @Doc("Duplicate the top value")
-    fun dup(callingFunction: Function) = listOf(callingFunction.stack.last())
+    fun dup(ctx: CallContext) = listOf(ctx.function.stack.last())
     
     @Doc("Drop the top value")
-    fun drop(callingFunction: Function) = listOf<StackValue<*>>().also {
-        callingFunction.stack.pop(1)
+    fun drop(ctx: CallContext) = listOf<StackValue<*>>().also {
+        ctx.function.stack.pop(1)
     }
 
     @Doc("Rotate the stack. Positive <n> rotates left, negative rotates right.")
-    fun rot(callingFunction: Function, n: Double) = listOf<StackValue<*>>().also {
-        val rotated = callingFunction.stack.rotate(n.toInt())
-        callingFunction.stack.clear()
-        callingFunction.stack.addAll(rotated)
+    fun rot(ctx: CallContext, n: Double) = listOf<StackValue<*>>().also {
+        val rotated = ctx.function.stack.rotate(n.toInt())
+        ctx.function.stack.clear()
+        ctx.function.stack.addAll(rotated)
     } 
 
     @Doc("Drop every value except for the top")
-    fun keeplast(callingFunction: Function) = listOf(callingFunction.stack.last()).also {
-        callingFunction.stack.clear()
+    fun keeplast(ctx: CallContext) = listOf(ctx.function.stack.last()).also {
+        ctx.function.stack.clear()
     }
 
     @Suppress("UNCHECKED_CAST")
     val builtins = Builtins::class.memberFunctions.filter {
         it.returnType.isSubtypeOf(typeOf<List<StackValue<*>>>())
     }.groupBy { it.name }.mapValues { (name, overloads) ->
-        val takesCallingFunction = overloads.first().valueParameters.first().name!! == "callingFunction"
+        val takesContext = overloads.first().valueParameters.first().name!! == "ctx"
         val arity = overloads.first().valueParameters.size
-        if (takesCallingFunction) {
-            check(overloads.all { it.valueParameters.first().let { it.name!! == "callingFunction" && it.type == typeOf<Function>() } }) {
-                "All overloads for builtin function $name must take a callingFunction parameter if any one does!"
+        if (takesContext) {
+            check(overloads.all { it.valueParameters.first().let { it.name!! == "ctx" && it.type == typeOf<CallContext>() } }) {
+                "All overloads for builtin function $name must take a ctx parameter if any one does!"
             }
         }
         check(overloads.all { it.valueParameters.size == arity }) {
             "All overloads for builtin function $name must have the same number of parameters!"
         }
         BuiltinFunction(
-            name, arity - if (takesCallingFunction) 1 else 0, takesCallingFunction,
+            name, arity - if (takesContext) 1 else 0, takesContext,
             overloads.map { overload ->
                 BuiltinFunction.Overload(
-                    overload.valueParameters.drop(if (takesCallingFunction) 1 else 0).map { param ->
+                    overload.valueParameters.drop(if (takesContext) 1 else 0).map { param ->
                         val paramType = param.type
                         when (paramType) {
                             typeOf<Double>() -> StackValue.Number::class
@@ -125,6 +125,9 @@ object Builtins {
         )
     }
 }
-data class BuiltinFunction(val name: String, val arity: Int, val takesCallingFunction: Boolean, val overloads: List<Overload>) {
+
+data class CallContext(val function: Function, val node: Node.Identifier)
+
+data class BuiltinFunction(val name: String, val arity: Int, val takesContext: Boolean, val overloads: List<Overload>) {
     data class Overload(val argTypes: List<KClass<*>>, val impl: KFunction<List<StackValue<*>>>, val doc: String?)
 }

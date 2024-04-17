@@ -23,9 +23,9 @@ object Interpreter {
 
 
                     val builtin = Builtins.builtins[builtinName]
-                        ?: throw BuiltinException(node.range, "Cannot call unknown builtin ${builtinName}!")
+                        ?: throw BuiltinException(node.range, function, "Cannot call unknown builtin ${builtinName}!")
                     if (function.stack.size < if (conditional) builtin.arity + 1 else builtin.arity) {
-                        throw BuiltinException(node.range,
+                        throw BuiltinException(node.range, function,
                             "Cannot call"
                             + if (conditional) "(conditional) builtin" else "builtin"
                             + builtin.name
@@ -36,7 +36,7 @@ object Interpreter {
                         )
                     }
                     val argValues = function.stack.pop(builtin.arity)
-                    if (conditional && !Builtins.truthy(function.stack.pop(1).single())) {
+                    if (conditional && !truthy(function.stack.pop(1).single())) {
                         continue
                     }
                     val argTypes = argValues.map { it::class }
@@ -44,14 +44,14 @@ object Interpreter {
                         it.argTypes.zip(argTypes).all { (expected, actual) ->
                             expected.isSuperclassOf(actual)
                         }
-                    } ?: throw BuiltinException(node.range, "Builtin ${builtin.name} has no overload for ${if (argTypes.size == 1) "argument" else "arguments"} of type (${argTypes.map { it.simpleName }.joinToString(", ")})!")
+                    } ?: throw BuiltinException(node.range, function, "Builtin ${builtin.name} has no overload for ${if (argTypes.size == 1) "argument" else "arguments"} of type (${argTypes.map { it.simpleName }.joinToString(", ")})!")
                     val args = argValues.zip(overload.argTypes).map { (value, type) ->
                         when (type) {
                             Any::class -> value
                             else -> value.value
                         }
                     }
-                    val argArray = (listOf(function.takeIf { builtin.takesCallingFunction }) + args).filterNotNull().toTypedArray()
+                    val argArray = (listOf(CallContext(function, node).takeIf { builtin.takesContext }) + args).filterNotNull().toTypedArray()
 
                     overload.impl.runCatching { call(Builtins, *argArray) }.onFailure {
                         when (
@@ -61,9 +61,9 @@ object Interpreter {
                                 it
                             }
                         ) {
-                            is BuiltinRuntimeError -> throw BuiltinException(node.range, error.message!!)
+                            is BuiltinRuntimeError -> throw BuiltinException(node.range, function, error.message!!)
                             is PclException -> throw error
-                            else -> throw BuiltinBorkedException(node.range, "An internal exception occured in builtin ${node.name}!", error as? Exception)
+                            else -> throw PclRuntimeException(node.range, function, "An internal exception occured in builtin ${node.name}!", error as? Exception)
                         }
                     }.onSuccess {
                         function.stack.addAll(it)
