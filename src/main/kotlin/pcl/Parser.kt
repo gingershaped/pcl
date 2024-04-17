@@ -7,8 +7,6 @@ internal val DIGIT_CHARS = '0'..'9'
 internal val WHITESPACE = "\n\t ".toCharArray()
 internal val IDENTIFIER_CHARS = ('a'..'z') + ('A'..'Z') + DIGIT_CHARS + '?'
 
-internal fun <T> ListIterator<T>.peekNext() = next().also { previous() } 
-internal fun <T> ListIterator<T>.peekPrevious() = previous().also { next() }
 internal fun <T> Iterator<T>.nextOrNull() =
     runCatching { next() }.getOrElse {
         if (it is NoSuchElementException) {
@@ -54,7 +52,7 @@ object Parser {
                     }
                 }
                 in DIGIT_CHARS, '-' -> {
-                    if (token == '-' && tokens.peekNext().value !in DIGIT_CHARS) {
+                    if (token == '-' && tokens.nextOrNull()?.also { tokens.previous() }?.value !in DIGIT_CHARS) {
                         Token.Sub(position..position)
                     } else {
                         val endPos: Int
