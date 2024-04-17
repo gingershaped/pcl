@@ -83,7 +83,10 @@ object Builtins {
         val rotated = ctx.function.stack.rotate(n.toInt())
         ctx.function.stack.clear()
         ctx.function.stack.addAll(rotated)
-    } 
+    }
+
+    @Doc("Swap the top two values on the stack")
+    fun swap(a: StackValue<*>, b: StackValue<*>) = listOf(b, a)
 
     @Doc("Drop every value except for the top")
     fun keeplast(ctx: CallContext) = listOf(ctx.function.stack.last()).also {
