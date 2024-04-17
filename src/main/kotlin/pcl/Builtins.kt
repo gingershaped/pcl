@@ -67,16 +67,21 @@ object Builtins {
 
     // Stack manipulation
     @Doc("Pop a value from the parent stack and push it to this stack")
-    fun take(ctx: CallContext) = ctx.function.parent?.function?.stack?.pop(1)
+    fun take(ctx: CallContext) = ctx.function.parent?.function?.stack?.let {
+        if (it.isEmpty()) {
+            throw BuiltinRuntimeError("Parent stack is empty")
+        } else {
+            it.pop(1)
+        }
+    }
         ?: throw BuiltinRuntimeError("Cannot call take without a parent function")
 
     @Doc("Duplicate the top value")
-    fun dup(ctx: CallContext) = listOf(ctx.function.stack.last())
+    fun dup(value: StackValue<*>) = listOf(value, value)
     
     @Doc("Drop the top value")
-    fun drop(ctx: CallContext) = listOf<StackValue<*>>().also {
-        ctx.function.stack.pop(1)
-    }
+    @Suppress("UNUSED_PARAMETER")
+    fun drop(value: StackValue<*>) = listOf<StackValue<*>>()
 
     @Doc("Rotate the stack. Positive <n> rotates left, negative rotates right.")
     fun rot(ctx: CallContext, n: Double) = listOf<StackValue<*>>().also {
@@ -89,7 +94,7 @@ object Builtins {
     fun swap(a: StackValue<*>, b: StackValue<*>) = listOf(b, a)
 
     @Doc("Drop every value except for the top")
-    fun keeplast(ctx: CallContext) = listOf(ctx.function.stack.last()).also {
+    fun keeplast(ctx: CallContext) = listOf(ctx.function.stack.lastOrNull()).filterNotNull().also {
         ctx.function.stack.clear()
     }
 
