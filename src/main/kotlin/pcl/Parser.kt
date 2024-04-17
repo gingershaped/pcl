@@ -5,6 +5,7 @@ import pcl.WHITESPACE
 
 internal val DIGIT_CHARS = '0'..'9'
 internal val WHITESPACE = "\n\t ".toCharArray()
+internal val IDENTIFIER_CHARS = ('a'..'z') + ('A'..'Z') + DIGIT_CHARS + '?'
 
 internal fun <T> ListIterator<T>.peekNext() = next().also { previous() } 
 internal fun <T> ListIterator<T>.peekPrevious() = previous().also { next() }
@@ -108,29 +109,26 @@ object Parser {
                     }
                     Token.Whitespace(position..endPos)
                 }
-                else -> {
-                    if (!token.isLetterOrDigit()) {
-                        Token.Error(position..position, "Unknown token")
-                    } else {
-                        val endPos: Int
-                        buildString {
-                            append(token)
-                            while (true) {
-                                val char = tokens.nextOrNull()
-                                if (char == null) {
-                                    endPos = program.length - 1
-                                    break
-                                }
-                                if (!char.value.isLetterOrDigit()) {
-                                    tokens.previous()
-                                    endPos = char.index - 1
-                                    break
-                                }
-                                append(char.value)
+                in IDENTIFIER_CHARS -> {
+                    val endPos: Int
+                    buildString {
+                        append(token)
+                        while (true) {
+                            val char = tokens.nextOrNull()
+                            if (char == null) {
+                                endPos = program.length - 1
+                                break
                             }
-                        }.let { Token.Identifier(position..endPos, it) }
-                    }
+                            if (char.value !in IDENTIFIER_CHARS) {
+                                tokens.previous()
+                                endPos = char.index - 1
+                                break
+                            }
+                            append(char.value)
+                        }
+                    }.let { Token.Identifier(position..endPos, it) }
                 }
+                else -> Token.Error(position..position, "Unknown token ${token}")
             }.let { add(it) }
         }
     }

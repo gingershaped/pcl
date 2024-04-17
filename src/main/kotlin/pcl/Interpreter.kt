@@ -14,13 +14,31 @@ object Interpreter {
         for (node in function.body) {
             when (node) {
                 is Node.Identifier -> {
-                    val builtin = Builtins.builtins[node.name]
-                        ?: throw BuiltinException(node.range, "Cannot call unknown builtin ${node.name}!")
-                    if (function.stack.size < builtin.arity) {
-                        throw BuiltinException(node.range, "Cannot call builtin ${node.name} with ${function.stack.size} ${if (function.stack.size == 1) "item" else "items"} on the stack! (needs at least ${builtin.arity})")
+                    val conditional = node.name.endsWith('?')
+                    val builtinName = if (conditional) {
+                        node.name.dropLast(1)
+                    } else {
+                        node.name
                     }
 
+
+                    val builtin = Builtins.builtins[builtinName]
+                        ?: throw BuiltinException(node.range, "Cannot call unknown builtin ${builtinName}!")
+                    if (function.stack.size < if (conditional) builtin.arity + 1 else builtin.arity) {
+                        throw BuiltinException(node.range,
+                            "Cannot call"
+                            + if (conditional) "(conditional) builtin" else "builtin"
+                            + builtin.name
+                            + "with ${function.stack.size}"
+                            + if (function.stack.size == 1) "argument" else "arguments"
+                            + "on the stack!"
+                            + if (conditional) "(needs at least ${builtin.arity}, plus a value to check for truthiness)" else "(needs at least ${builtin.arity})"
+                        )
+                    }
                     val argValues = function.stack.pop(builtin.arity)
+                    if (conditional && !Builtins.truthy(function.stack.pop(1).single())) {
+                        continue
+                    }
                     val argTypes = argValues.map { it::class }
                     val overload = builtin.overloads.singleOrNull {
                         it.argTypes.zip(argTypes).all { (expected, actual) ->

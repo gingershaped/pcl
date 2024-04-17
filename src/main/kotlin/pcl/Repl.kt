@@ -86,7 +86,11 @@ object PCLHighlighter : Highlighter {
                         style(functionStyle)
                     }
                     is Token.Identifier -> {
-                        style(identifierStyle)
+                        if (token.name.endsWith('?')) {
+                            style(identifierStyle.italic())
+                        } else {
+                            style(identifierStyle)
+                        }
                     }
                     is Token.Error -> {
                         style { it.foreground(AttributedStyle.BRIGHT + AttributedStyle.RED) }
