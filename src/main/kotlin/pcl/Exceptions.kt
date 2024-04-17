@@ -5,15 +5,6 @@ import org.jline.utils.AttributedStyle
 
 open class PclException(val range: IntRange, message: String, cause: Exception? = null) : Exception(message, cause) {
     override fun toString() = "${this::class.simpleName}: $message"
-
-    fun highlight(source: String) = AttributedStringBuilder().apply {
-        style { it.foreground(AttributedStyle.RED) }
-        appendLine("At position ${range.start + 1}:")
-        style { AttributedStyle.DEFAULT }
-        appendLine(pcl.highlight(source))
-        style { AttributedStyle.DEFAULT.bold() }
-        appendLine(" ".repeat(range.start) + "^".repeat((range.endInclusive - range.start) + 1))
-    }
 }
 
 open class PclRuntimeException(range: IntRange, val function: Function, message: String, cause: Exception? = null) : PclException(range, message, cause)

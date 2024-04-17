@@ -35,38 +35,44 @@ object Interpreter {
                             + if (conditional) "(needs at least ${builtin.arity}, plus a value to check for truthiness)" else "(needs at least ${builtin.arity})"
                         )
                     }
+
                     val argValues = function.stack.pop(builtin.arity)
                     if (conditional && !truthy(function.stack.pop(1).single())) {
                         continue
                     }
-                    val argTypes = argValues.map { it::class }
-                    val overload = builtin.overloads.singleOrNull {
-                        it.argTypes.zip(argTypes).all { (expected, actual) ->
-                            expected.isSuperclassOf(actual)
-                        }
-                    } ?: throw BuiltinException(node.range, function, "Builtin ${builtin.name} has no overload for ${if (argTypes.size == 1) "argument" else "arguments"} of type (${argTypes.map { it.simpleName }.joinToString(", ")})!")
-                    val args = argValues.zip(overload.argTypes).map { (value, type) ->
-                        when (type) {
-                            Any::class -> value
-                            else -> value.value
-                        }
-                    }
-                    val argArray = (listOf(CallContext(function, node).takeIf { builtin.takesContext }) + args).filterNotNull().toTypedArray()
-
-                    overload.impl.runCatching { call(Builtins, *argArray) }.onFailure {
-                        when (
-                            val error = if (it is InvocationTargetException) {
-                                it.cause ?: it
-                            } else {
-                                it
+                    try {
+                        val argTypes = argValues.map { it::class }
+                        val overload = builtin.overloads.singleOrNull {
+                            it.argTypes.zip(argTypes).all { (expected, actual) ->
+                                expected.isSuperclassOf(actual)
                             }
-                        ) {
-                            is BuiltinRuntimeError -> throw BuiltinException(node.range, function, error.message!!)
-                            is PclException -> throw error
-                            else -> throw BuiltinBorkedException(node.range, function, "An internal exception occured in builtin ${node.name}!", error as? Exception)
+                        } ?: throw BuiltinException(node.range, function, "Builtin ${builtin.name} has no overload for ${if (argTypes.size == 1) "argument" else "arguments"} of type (${argTypes.map { it.simpleName }.joinToString(", ")})!")
+                        val args = argValues.zip(overload.argTypes).map { (value, type) ->
+                            when (type) {
+                                Any::class -> value
+                                else -> value.value
+                            }
                         }
-                    }.onSuccess {
-                        function.stack.addAll(it)
+                        val argArray = (listOf(CallContext(function, node).takeIf { builtin.takesContext }) + args).filterNotNull().toTypedArray()
+
+                        overload.impl.runCatching { call(Builtins, *argArray) }.onFailure {
+                            when (
+                                val error = if (it is InvocationTargetException) {
+                                    it.cause ?: it
+                                } else {
+                                    it
+                                }
+                            ) {
+                                is BuiltinRuntimeError -> throw BuiltinException(node.range, function, error.message!!)
+                                is PclException -> throw error
+                                else -> throw BuiltinBorkedException(node.range, function, "An internal exception occured in builtin ${node.name}!", error as? Exception)
+                            }
+                        }.onSuccess {
+                            function.stack.addAll(it)
+                        }
+                    } catch (e: PclException) {
+                        function.stack.addAll(argValues)
+                        throw e
                     }
                 }
                 is Node.Number -> {
@@ -89,6 +95,8 @@ data class Function(val body: List<Node>, val stack: MutableList<StackValue<*>>,
     constructor(body: List<Node>, stack: MutableList<StackValue<*>>, parentFunction: Function, invokedAt: Node)
         : this(body, stack, Parent(parentFunction, invokedAt))
     data class Parent(val function: Function, val childInvokedAt: Node)
+
+    fun unwind(): List<Function> = if (parent != null) parent.function.unwind() + this else listOf(this)
 }
 
 sealed class StackValue<out T> {

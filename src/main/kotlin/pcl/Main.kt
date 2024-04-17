@@ -20,6 +20,9 @@ import kotlin.system.exitProcess
 import kotlin.text.lowercase
 import java.nio.file.Paths
 import java.nio.file.Files
+import org.jline.terminal.TerminalBuilder
+import org.jline.utils.AttributedString
+import org.jline.utils.AttributedStyle
 
 class PCL : CliktCommand() {
     private val source: String? by argument(help = "The script to run.")
@@ -44,7 +47,7 @@ class PCL : CliktCommand() {
         }
     private val stackFormat by option("--stack-format", help = "How to print data left on the stack.")
         .enum<StackFormat> { it.name.lowercase().replace('_', '-') }
-        .default(StackFormat.JOIN_SPACES)
+        .default(StackFormat.FANCY)
     private val tokenize by option("--tokenize", help = "Don't run the program; instead, print the parsed tokens.")
         .flag(default = false)
         .validate {
@@ -56,36 +59,51 @@ class PCL : CliktCommand() {
         .flag(default = false)
     
     override fun run() {
+        val terminal = TerminalBuilder.builder()
+            .build()
         val program = if (loadFile) {
             Paths.get(source).readText()
         } else { source }
 
-        if (program != null) {
-            if (tokenize) {
-                println(Parser.tokenize(program))
-                return
-            }
-            val stack = try {
-                Interpreter.run(Parser.parse(Parser.tokenize(program)))
-            } catch (e: PclException) {
-                if (!quiet) {
-                    System.err.println("At position ${e.range.start + 1}:")
-                    System.err.println(program)
-                    System.err.println(" ".repeat(e.range.start) + "^" + "~".repeat(e.range.endInclusive - e.range.start))
-                    System.err.println(e.stackTraceToString())
+        terminal.use {
+            if (program != null) {
+                if (tokenize) {
+                    terminal.writer().println(Parser.tokenize(program))
+                    return
                 }
-                throw ProgramResult(-1)
+                val stack = try {
+                    Interpreter.run(Parser.parse(Parser.tokenize(program)))
+                } catch (e: PclException) {
+                    if (!quiet) {
+                        e.diagnostic(program).println(terminal)
+                        terminal.flush()
+                    }
+                    throw ProgramResult(-1)
+                }
+                if (!quiet) {
+                    when (stackFormat) {
+                        StackFormat.HIDE -> Unit
+                        StackFormat.FANCY -> {
+                            if (stack.isEmpty()) {
+                                AttributedString("empty stack", AttributedStyle.DEFAULT.faint()).println(terminal)
+                            } else {
+                                for (value in stack) {
+                                    value.highlight().println(terminal)
+                                }
+                            }
+                        }
+                        else -> println(stack.map { it.value.toString() }.joinToString(stackFormat.sep))
+                    }
+                }
+                terminal.flush()
+            } else {
+                repl(terminal)
             }
-            if (stackFormat != StackFormat.HIDE && !quiet) {
-                println(stack.map { it.value.toString() }.joinToString(stackFormat.sep))
-            }
-        } else {
-            repl()
         }
     }
 
     enum class StackFormat(val sep: String) {
-        JOIN_SPACES(" "), JOIN_NEWLINES("\n"), JOIN_NULLS("\u0000"), CONCATENATE(""), HIDE("")
+        FANCY(""), JOIN_SPACES(" "), JOIN_NEWLINES("\n"), JOIN_NULLS("\u0000"), CONCATENATE(""), HIDE("")
     }
 }
 

@@ -168,7 +168,7 @@ object Parser {
     }
 }
 
-internal data class FunctionStackEntry(val body: MutableList<Node>, val start: Int)
+private data class FunctionStackEntry(val body: MutableList<Node>, val start: Int)
 
 sealed class Token {
     abstract val range: IntRange
@@ -176,7 +176,6 @@ sealed class Token {
     data class Number(override val range: IntRange, val value: Double) : Token()
     data class Str(override val range: IntRange, val value: String) : Token()
     data class Identifier(override val range: IntRange, val name: String) : Token()
-
 
     data class Add(override val range: IntRange) : Token()
     data class Sub(override val range: IntRange) : Token()
@@ -200,24 +199,3 @@ sealed class Node {
     data class Identifier(override val range: IntRange, val name: String) : Node()
     data class Function(override val range: IntRange, val body: List<Node>) : Node()
 }
-
-fun Collection<Node>.sourceify(): String = buildList {
-    for (node in this@sourceify) {
-        when (node) {
-            is Node.Number -> {
-                add(node.value)
-            }
-            is Node.Str -> {
-                add("\"${node.value}\"")
-            }
-            is Node.Identifier -> {
-                add(node.name)
-            }
-            is Node.Function -> {
-                add("{")
-                add(node.body.sourceify())
-                add("}")
-            }
-        }
-    }
-}.joinToString(" ")

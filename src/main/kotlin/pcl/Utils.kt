@@ -2,6 +2,8 @@ package pcl
 
 import kotlin.math.absoluteValue
 
+fun String.escaped() = "\"" + replace("\"", "\\\"") + "\""
+
 fun truthy(value: StackValue<*>) = when(value) {
     is StackValue.Number -> value.value != 0.0
     is StackValue.Str -> value.value.isNotEmpty()
