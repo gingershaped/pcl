@@ -24,7 +24,7 @@ import kotlin.collections.lastIndex
 object PCLCompleter : Completer {
     override fun complete(reader: LineReader, line: ParsedLine, candidates: MutableList<Candidate>) {
         for (builtin in Builtins.builtins.values) {
-            for ((argTypes, overload) in builtin.overloads) {
+            for (overload in builtin.overloads) {
                 candidates.add(Candidate(
                     builtin.name,
                     AttributedStringBuilder().apply {
@@ -32,7 +32,7 @@ object PCLCompleter : Completer {
                         append(builtin.name)
                         style(AttributedStyle.DEFAULT)
                         append("(")
-                        append(argTypes.map { it.simpleName }.joinToString(", "))
+                        append(overload.argTypes.map { it.simpleName }.joinToString(", "))
                         append(")")
                     }.toAnsi(),
                     "builtins",

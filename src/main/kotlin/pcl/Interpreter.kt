@@ -1,6 +1,7 @@
 package pcl
 
 import java.lang.reflect.InvocationTargetException
+import kotlin.reflect.full.isSuperclassOf
 
 
 object Interpreter {
@@ -19,13 +20,22 @@ object Interpreter {
                         throw BuiltinException(node.range, "Cannot call builtin ${node.name} with ${function.stack.size} ${if (function.stack.size == 1) "item" else "items"} on the stack! (needs at least ${builtin.arity})")
                     }
 
-                    val args = function.stack.pop(builtin.arity)
-                    val argTypes = args.map { it::class }
-                    val impl = builtin.overloads[argTypes]?.impl
-                        ?: throw BuiltinException(node.range, "Builtin ${builtin.name} has no overload for ${if (argTypes.size == 1) "argument" else "arguments"} of type (${argTypes.map { it.simpleName }.joinToString(", ")})!")
-                    val argArray = (listOf(function.takeIf { builtin.takesCallingFunction }) + args.map { it.value }).filterNotNull().toTypedArray()
+                    val argValues = function.stack.pop(builtin.arity)
+                    val argTypes = argValues.map { it::class }
+                    val overload = builtin.overloads.singleOrNull {
+                        it.argTypes.zip(argTypes).all { (expected, actual) ->
+                            expected.isSuperclassOf(actual)
+                        }
+                    } ?: throw BuiltinException(node.range, "Builtin ${builtin.name} has no overload for ${if (argTypes.size == 1) "argument" else "arguments"} of type (${argTypes.map { it.simpleName }.joinToString(", ")})!")
+                    val args = argValues.zip(overload.argTypes).map { (value, type) ->
+                        when (type) {
+                            Any::class -> value
+                            else -> value.value
+                        }
+                    }
+                    val argArray = (listOf(function.takeIf { builtin.takesCallingFunction }) + args).filterNotNull().toTypedArray()
 
-                    impl.runCatching { call(Builtins, *argArray) }.onFailure {
+                    overload.impl.runCatching { call(Builtins, *argArray) }.onFailure {
                         when (
                             val error = if (it is InvocationTargetException) {
                                 it.cause ?: it

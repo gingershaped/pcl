@@ -50,22 +50,24 @@ object Builtins {
         BuiltinFunction(
             name, arity - if (takesCallingFunction) 1 else 0, takesCallingFunction,
             overloads.map { overload ->
-                overload.valueParameters.drop(if (takesCallingFunction) 1 else 0).map { param ->
-                    val paramType = param.type
-                    when (paramType) {
-                        typeOf<Double>() -> StackValue.Number::class
-                        typeOf<String>() -> StackValue.Str::class
-                        typeOf<List<Node>>() -> StackValue.Function::class
-                        else -> error("Builtin function ${overload.name} has invalid type ${paramType} for parameter ${param.name}!")
-                    }
-                } to BuiltinFunction.Overload(
+                BuiltinFunction.Overload(
+                    overload.valueParameters.drop(if (takesCallingFunction) 1 else 0).map { param ->
+                        val paramType = param.type
+                        when (paramType) {
+                            typeOf<Double>() -> StackValue.Number::class
+                            typeOf<String>() -> StackValue.Str::class
+                            typeOf<List<Node>>() -> StackValue.Function::class
+                            typeOf<StackValue<*>>() -> Any::class
+                            else -> error("Builtin function ${overload.name} has invalid type ${paramType} for parameter ${param.name}!")
+                        }
+                    },
                     overload as KFunction<List<StackValue<*>>>,
                     (overload.annotations.singleOrNull { it is Doc } as Doc?)?.doc
                 )
-            }.toMap()
+            }
         )
     }
 }
-data class BuiltinFunction(val name: String, val arity: Int, val takesCallingFunction: Boolean, val overloads: Map<List<KClass<out StackValue<Any>>>, Overload>) {
-    data class Overload(val impl: KFunction<List<StackValue<*>>>, val doc: String?)
+data class BuiltinFunction(val name: String, val arity: Int, val takesCallingFunction: Boolean, val overloads: List<Overload>) {
+    data class Overload(val argTypes: List<KClass<*>>, val impl: KFunction<List<StackValue<*>>>, val doc: String?)
 }
