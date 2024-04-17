@@ -58,11 +58,19 @@ object Builtins {
     }
 
     // Control flow
-    @Doc("Call a function once for every value on the stack")
-    fun map(ctx: CallContext, function: List<Node>) = ctx.function.stack.toList().flatMap {
+    @Doc("Apply a transformation to every value on the stack")
+    fun map(ctx: CallContext, function: List<Node>) = ctx.function.stack.map {
         Function(function, mutableListOf(it), ctx.function, ctx.node).also {
             Interpreter.run(it)
-        }.stack
+        }.stack.let {
+            it.singleOrNull() ?: if (it.isEmpty()) {
+                throw BuiltinRuntimeError("No values returned from map transform")
+            } else {
+                throw BuiltinRuntimeError("Multiple values returned from map transform: ${it}")
+            }
+        }
+    }.also {
+        ctx.function.stack.clear()
     }
 
     // Stack manipulation
