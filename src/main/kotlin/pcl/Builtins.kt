@@ -52,7 +52,7 @@ object Builtins {
 
     // Functions
     @Doc("Call a function")
-    fun call(ctx: CallContext, function: List<Node>) = Function(function, mutableListOf(), ctx.function).let {
+    fun call(ctx: CallContext, function: List<Node>) = Function(function, mutableListOf(), ctx.function, ctx.node).let {
         Interpreter.run(it)
         it.stack
     }
@@ -60,14 +60,14 @@ object Builtins {
     // Control flow
     @Doc("Call a function once for every value on the stack")
     fun map(ctx: CallContext, function: List<Node>) = ctx.function.stack.toList().flatMap {
-        Function(function, mutableListOf(it), ctx.function).also {
+        Function(function, mutableListOf(it), ctx.function, ctx.node).also {
             Interpreter.run(it)
         }.stack
     }
 
     // Stack manipulation
     @Doc("Pop a value from the parent stack and push it to this stack")
-    fun take(ctx: CallContext) = ctx.function.parent?.stack?.pop(1)
+    fun take(ctx: CallContext) = ctx.function.parent?.function?.stack?.pop(1)
         ?: throw BuiltinRuntimeError("Cannot call take without a parent function")
 
     @Doc("Duplicate the top value")

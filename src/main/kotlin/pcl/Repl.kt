@@ -21,7 +21,7 @@ import java.util.logging.Logger
 import kotlin.collections.lastIndex
 
 
-object PCLCompleter : Completer {
+internal object PCLCompleter : Completer {
     override fun complete(reader: LineReader, line: ParsedLine, candidates: MutableList<Candidate>) {
         for (builtin in Builtins.builtins.values) {
             for (overload in builtin.overloads) {
@@ -56,7 +56,7 @@ internal val stringStyle = AttributedStyle.DEFAULT.foreground(AttributedStyle.GR
 internal val identifierStyle = AttributedStyle.DEFAULT.foreground(AttributedStyle.BRIGHT + AttributedStyle.CYAN)
 internal val functionStyle = AttributedStyle.DEFAULT.foreground(AttributedStyle.YELLOW).bold()
 
-object PCLHighlighter : Highlighter {
+internal object PCLHighlighter : Highlighter {
     private lateinit var errorPattern: Pattern
     private var errorIndex = -1
 
@@ -72,36 +72,7 @@ object PCLHighlighter : Highlighter {
         if (buffer.startsWith(':')) {
             return AttributedString(buffer, AttributedStyle.DEFAULT.faint())
         }
-        val tokens = Parser.tokenize(buffer)
-        return AttributedStringBuilder().apply {
-            for (token in tokens) {
-                when (token) {
-                    is Token.Number -> {
-                        style(numberStyle)
-                    }
-                    is Token.Str -> {
-                        style(stringStyle)
-                    }
-                    is Token.OpenFunction, is Token.CloseFunction -> {
-                        style(functionStyle)
-                    }
-                    is Token.Identifier -> {
-                        if (token.name.endsWith('?')) {
-                            style(identifierStyle.italic())
-                        } else {
-                            style(identifierStyle)
-                        }
-                    }
-                    is Token.Error -> {
-                        style { it.foreground(AttributedStyle.BRIGHT + AttributedStyle.RED) }
-                    }
-                    else -> {
-                        style { AttributedStyle.DEFAULT }
-                    }
-                }
-                append(buffer.substring(token.range))
-            }
-        }.toAttributedString()
+        return highlight(buffer)
     }
 }
 
@@ -139,52 +110,37 @@ fun repl() {
             Interpreter.run(Parser.parse(Parser.tokenize(line)))
         } catch (e: PclException) {
             AttributedStringBuilder().apply {
-                style { it.foreground(AttributedStyle.RED) }
-                appendLine("At position ${e.range.start + 1}:")
-                style { AttributedStyle.DEFAULT }
-                appendLine(PCLHighlighter.highlight(reader, line))
-                style { AttributedStyle.DEFAULT.bold() }
-                appendLine(" ".repeat(e.range.start) + "^".repeat((e.range.endInclusive - e.range.start) + 1))
+                appendLine(e.highlight(line))
                 style { AttributedStyle.DEFAULT.foreground(AttributedStyle.RED).bold() }
                 if (e is BuiltinBorkedException) {
                     appendLine(e.stackTraceToString())
                 } else {
                     appendLine(e.toString())
                 }
+
+                if (e is PclRuntimeException) {
+                    style { it.boldOff() }
+                    appendLine("Traceback:")
+                    fun unwind(function: Function) {
+                        style { AttributedStyle.DEFAULT.foreground(AttributedStyle.RED) }
+                        appendLine("=== Stack:")
+                        appendLine(highlightStack(function.stack))
+                        style { AttributedStyle.DEFAULT.foreground(AttributedStyle.RED) }
+                        if (function.parent != null) {
+                            appendLine("=== Called by:")
+                            appendLine(highlight(line))
+                            style { AttributedStyle.DEFAULT.bold() }
+                            val range = function.parent.childInvokedAt.range
+                            appendLine(" ".repeat(range.start) + "^".repeat((range.endInclusive - range.start) + 1))
+                            unwind(function.parent.function)
+                        }
+                    }
+                    unwind(e.function)
+                }
+
             }.println(terminal)
             continue
         }
-        AttributedStringBuilder().apply {
-            if (stack.isEmpty()) {
-                style { AttributedStyle.DEFAULT.faint() }
-                append("stack is empty")
-            } else {
-                for ((index, item) in stack.withIndex()) {
-                    when (item) {
-                        is StackValue.Number -> {
-                            style(numberStyle)
-                            append(item.value.toString())
-                        }
-                        is StackValue.Str -> {
-                            style(stringStyle)
-                            append('"')
-                            append(item.value)
-                            append('"')
-                        }
-                        is StackValue.Function -> {
-                            style(functionStyle)
-                            append("{ ")
-                            style { AttributedStyle.DEFAULT }
-                            append(PCLHighlighter.highlight(reader, item.value.sourceify()))
-                            style(functionStyle)
-                            append(" }")
-                        }
-                    }
-                    if (index != stack.lastIndex) {
-                        append("\n")
-                    }
-                }
-            }
-        }.println(terminal)
+        highlightStack(stack).println(terminal)
     }
 }

@@ -63,7 +63,7 @@ object Interpreter {
                         ) {
                             is BuiltinRuntimeError -> throw BuiltinException(node.range, function, error.message!!)
                             is PclException -> throw error
-                            else -> throw PclRuntimeException(node.range, function, "An internal exception occured in builtin ${node.name}!", error as? Exception)
+                            else -> throw BuiltinBorkedException(node.range, function, "An internal exception occured in builtin ${node.name}!", error as? Exception)
                         }
                     }.onSuccess {
                         function.stack.addAll(it)
@@ -85,28 +85,11 @@ object Interpreter {
 
 fun <T> MutableList<T>.pop(amount: Int = 1) = (0..<amount).map { removeAt(size - 1) }.reversed()
 
-data class Function(val body: List<Node>, val stack: MutableList<StackValue<*>>, val parent: Function?)
-
-fun Collection<Node>.sourceify(): String = buildList {
-    for (node in this@sourceify) {
-        when (node) {
-            is Node.Number -> {
-                add(node.value)
-            }
-            is Node.Str -> {
-                add("\"${node.value}\"")
-            }
-            is Node.Identifier -> {
-                add(node.name)
-            }
-            is Node.Function -> {
-                add("{")
-                add(node.body.sourceify())
-                add("}")
-            }
-        }
-    }
-}.joinToString(" ")
+data class Function(val body: List<Node>, val stack: MutableList<StackValue<*>>, val parent: Parent?) {
+    constructor(body: List<Node>, stack: MutableList<StackValue<*>>, parentFunction: Function, invokedAt: Node)
+        : this(body, stack, Parent(parentFunction, invokedAt))
+    data class Parent(val function: Function, val childInvokedAt: Node)
+}
 
 sealed class StackValue<out T> {
     abstract val value: T
