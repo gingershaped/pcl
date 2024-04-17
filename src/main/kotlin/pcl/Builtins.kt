@@ -57,6 +57,13 @@ object Builtins {
         it.stack
     }
 
+    // Control flow
+    @Doc("Call a function once for every value on the stack")
+    fun map(callingFunction: Function, function: List<Node>) = callingFunction.stack.toList().flatMap {
+        Function(function, mutableListOf(it), callingFunction).also {
+            Interpreter.run(it)
+        }.stack
+    }
 
     // Stack manipulation
     @Doc("Pop a value from the parent stack and push it to this stack")
@@ -71,15 +78,16 @@ object Builtins {
         callingFunction.stack.pop(1)
     }
 
+    @Doc("Rotate the stack. Positive <n> rotates left, negative rotates right.")
+    fun rot(callingFunction: Function, n: Double) = listOf<StackValue<*>>().also {
+        val rotated = callingFunction.stack.rotate(n.toInt())
+        callingFunction.stack.clear()
+        callingFunction.stack.addAll(rotated)
+    } 
+
     @Doc("Drop every value except for the top")
     fun keeplast(callingFunction: Function) = listOf(callingFunction.stack.last()).also {
         callingFunction.stack.clear()
-    }
-
-    fun truthy(value: StackValue<*>) = when(value) {
-        is StackValue.Number -> value.value != 0.0
-        is StackValue.Str -> value.value.isNotEmpty()
-        is StackValue.Function -> true
     }
 
     @Suppress("UNCHECKED_CAST")
