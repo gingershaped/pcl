@@ -4,14 +4,18 @@ import kotlin.reflect.KClass
 import kotlin.reflect.KFunction
 import kotlin.reflect.KCallable
 import kotlin.reflect.typeOf
-import kotlin.reflect.full.memberFunctions
-import kotlin.reflect.full.isSubclassOf
-import kotlin.reflect.full.isSubtypeOf
-import kotlin.reflect.full.valueParameters
 
 internal annotation class Doc(val doc: String)
 
 internal class BuiltinRuntimeError(message: String) : Exception(message)
+
+data class CallContext(val function: Function, val node: Node.Identifier)
+
+data class BuiltinFunction(val name: String, val arity: Int, val takesContext: Boolean, val overloads: List<Overload>) {
+    data class Overload(val argTypes: List<KClass<*>>, val impl: (ctx: CallContext, arguments: List<StackValue<*>>) -> List<StackValue<*>>, val doc: String?)
+}
+
+val zorp = BuiltinFunction.Overload(listOf(), { a, b -> listOf() }, null)
 
 object Builtins {
     // Math
@@ -115,44 +119,38 @@ object Builtins {
     fun over(a: StackValue<*>, b: StackValue<*>) = listOf(a, b, a)
 
 
-    @Suppress("UNCHECKED_CAST")
-    val builtins = Builtins::class.memberFunctions.filter {
-        it.returnType.isSubtypeOf(typeOf<List<StackValue<*>>>())
-    }.groupBy { it.name }.mapValues { (name, overloads) ->
-        val takesContext = overloads.first().valueParameters.first().name!! == "ctx"
-        val arity = overloads.first().valueParameters.size
-        if (takesContext) {
-            check(overloads.all { it.valueParameters.first().let { it.name!! == "ctx" && it.type == typeOf<CallContext>() } }) {
-                "All overloads for builtin function $name must take a ctx parameter if any one does!"
-            }
-        }
-        check(overloads.all { it.valueParameters.size == arity }) {
-            "All overloads for builtin function $name must have the same number of parameters!"
-        }
-        BuiltinFunction(
-            name, arity - if (takesContext) 1 else 0, takesContext,
-            overloads.map { overload ->
-                BuiltinFunction.Overload(
-                    overload.valueParameters.drop(if (takesContext) 1 else 0).map { param ->
-                        val paramType = param.type
-                        when (paramType) {
-                            typeOf<Double>() -> StackValue.Number::class
-                            typeOf<String>() -> StackValue.Str::class
-                            typeOf<List<Node>>() -> StackValue.Function::class
-                            typeOf<StackValue<*>>() -> Any::class
-                            else -> error("Builtin function ${overload.name} has invalid type ${paramType} for parameter ${param.name}!")
-                        }
-                    },
-                    overload as KFunction<List<StackValue<*>>>,
-                    (overload.annotations.singleOrNull { it is Doc } as Doc?)?.doc
-                )
-            }
-        )
-    }
-}
-
-data class CallContext(val function: Function, val node: Node.Identifier)
-
-data class BuiltinFunction(val name: String, val arity: Int, val takesContext: Boolean, val overloads: List<Overload>) {
-    data class Overload(val argTypes: List<KClass<*>>, val impl: KFunction<List<StackValue<*>>>, val doc: String?)
+    // @Suppress("UNCHECKED_CAST")
+    // val builtins = Builtins::class.memberFunctions.filter {
+    //     it.returnType.isSubtypeOf(typeOf<List<StackValue<*>>>())
+    // }.groupBy { it.name }.mapValues { (name, overloads) ->
+    //     val takesContext = overloads.first().valueParameters.first().name!! == "ctx"
+    //     val arity = overloads.first().valueParameters.size
+    //     if (takesContext) {
+    //         check(overloads.all { it.valueParameters.first().let { it.name!! == "ctx" && it.type == typeOf<CallContext>() } }) {
+    //             "All overloads for builtin function $name must take a ctx parameter if any one does!"
+    //         }
+    //     }
+    //     check(overloads.all { it.valueParameters.size == arity }) {
+    //         "All overloads for builtin function $name must have the same number of parameters!"
+    //     }
+    //     BuiltinFunction(
+    //         name, arity - if (takesContext) 1 else 0, takesContext,
+    //         overloads.map { overload ->
+    //             BuiltinFunction.Overload(
+    //                 overload.valueParameters.drop(if (takesContext) 1 else 0).map { param ->
+    //                     val paramType = param.type
+    //                     when (paramType) {
+    //                         typeOf<Double>() -> StackValue.Number::class
+    //                         typeOf<String>() -> StackValue.Str::class
+    //                         typeOf<List<Node>>() -> StackValue.Function::class
+    //                         typeOf<StackValue<*>>() -> Any::class
+    //                         else -> error("Builtin function ${overload.name} has invalid type ${paramType} for parameter ${param.name}!")
+    //                     }
+    //                 },
+    //                 overload as KFunction<List<StackValue<*>>>,
+    //                 (overload.annotations.singleOrNull { it is Doc } as Doc?)?.doc
+    //             )
+    //         }
+    //     )
+    // }
 }

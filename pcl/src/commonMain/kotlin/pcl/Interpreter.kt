@@ -21,9 +21,9 @@ object Interpreter {
                         node.name
                     }
 
-
-                    val builtin = Builtins.builtins[builtinName]
+                    val builtin: BuiltinFunction = builtinsMap[builtinName]
                         ?: throw BuiltinException(node.range, function, "Cannot call unknown builtin ${builtinName}!")
+
                     if (function.stack.size < if (conditional) builtin.arity + 1 else builtin.arity) {
                         throw BuiltinException(node.range, function,
                             "Cannot call"
@@ -47,15 +47,8 @@ object Interpreter {
                                 expected.isSuperclassOf(actual)
                             }
                         } ?: throw BuiltinException(node.range, function, "Builtin ${builtin.name} has no overload for ${if (argTypes.size == 1) "argument" else "arguments"} of type (${argTypes.map { it.simpleName }.joinToString(", ")})!")
-                        val args = argValues.zip(overload.argTypes).map { (value, type) ->
-                            when (type) {
-                                Any::class -> value
-                                else -> value.value
-                            }
-                        }
-                        val argArray = (listOf(CallContext(function, node).takeIf { builtin.takesContext }) + args).filterNotNull().toTypedArray()
 
-                        overload.impl.runCatching { call(Builtins, *argArray) }.onFailure {
+                        overload.runCatching { impl(CallContext(function, node), argValues) }.onFailure {
                             when (
                                 val error = if (it is InvocationTargetException) {
                                     it.cause ?: it

@@ -23,7 +23,7 @@ import kotlin.collections.lastIndex
 
 internal object PCLCompleter : Completer {
     override fun complete(reader: LineReader, line: ParsedLine, candidates: MutableList<Candidate>) {
-        for (builtin in Builtins.builtins.values) {
+        for (builtin in builtinsMap.values) {
             for (overload in builtin.overloads) {
                 candidates.add(Candidate(
                     builtin.name,
