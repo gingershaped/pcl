@@ -36,10 +36,10 @@ object Interpreter {
                         )
                     }
 
-                    val argValues = function.stack.pop(builtin.arity)
                     if (conditional && !truthy(function.stack.pop(1).single())) {
                         continue
                     }
+                    val argValues = function.stack.pop(builtin.arity)
                     try {
                         val argTypes = argValues.map { it::class }
                         val overload = builtin.overloads.singleOrNull {
