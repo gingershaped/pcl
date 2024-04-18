@@ -1,14 +1,11 @@
 import com.google.devtools.ksp.processing.*
 import com.google.devtools.ksp.symbol.*
-import com.google.devtools.ksp.validate
 import com.google.devtools.ksp.getAnnotationsByType
 import com.google.devtools.ksp.getDeclaredFunctions
 import com.google.devtools.ksp.getClassDeclarationByName
 import com.google.devtools.ksp.KspExperimental
-import kotlin.reflect.typeOf
 
 private const val CALL_CONTEXT = "pcl.CallContext"
-private const val BUILTIN_FUNCTION = "pcl.BuiltinFunction"
 private const val STACK_VALUE = "pcl.StackValue"
 
 @OptIn(KspExperimental::class)
