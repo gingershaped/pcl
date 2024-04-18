@@ -47,6 +47,9 @@ object Builtins {
     @Doc("Concatenate two strings")
     fun add(a: String, b: String) = listOf(StackValue.Str(a + b))
 
+    @Doc("Repeat a string")
+    fun mul(string: String, amount: Double) = listOf(StackValue.Str(string.repeat(amount.toInt())))
+
     @Doc("Push the length of a string")
     fun length(string: String) = listOf(StackValue.Number(string.length.toDouble()))
 
@@ -73,6 +76,7 @@ object Builtins {
     }.also {
         ctx.function.stack.clear()
     }
+    
 
     // Stack manipulation
     @Doc("Pop a value from the parent stack and push it to this stack")
@@ -106,6 +110,10 @@ object Builtins {
     fun keeplast(ctx: CallContext) = listOf(ctx.function.stack.lastOrNull()).filterNotNull().also {
         ctx.function.stack.clear()
     }
+
+    @Doc("Duplicate the value below the top of the stack")
+    fun over(a: StackValue<*>, b: StackValue<*>) = listOf(a, b, a)
+
 
     @Suppress("UNCHECKED_CAST")
     val builtins = Builtins::class.memberFunctions.filter {
