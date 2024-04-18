@@ -5,8 +5,6 @@ import kotlin.reflect.KFunction
 import kotlin.reflect.KCallable
 import kotlin.reflect.typeOf
 
-internal annotation class Doc(val doc: String)
-
 internal class BuiltinRuntimeError(message: String) : Exception(message)
 
 data class CallContext(val function: Function, val node: Node.Identifier)
@@ -15,7 +13,6 @@ data class BuiltinFunction(val name: String, val arity: Int, val takesContext: B
     data class Overload(val argTypes: List<KClass<*>>, val impl: (ctx: CallContext, arguments: List<StackValue<*>>) -> List<StackValue<*>>, val doc: String?)
 }
 
-val zorp = BuiltinFunction.Overload(listOf(), { a, b -> listOf() }, null)
 
 object Builtins {
     // Math
@@ -25,7 +22,7 @@ object Builtins {
     fun mul(a: Double, b: Double) = listOf(StackValue.Number(a * b))
     fun mod(a: Double, b: Double) = listOf(StackValue.Number(a.mod(b)))
 
-    @Doc("Push every number in [from, to] (inclusive)")
+    /** Push every number in [from, to] (inclusive) */
     fun range(from: Double, to: Double) = (from.toInt()..to.toInt()).toList().map { StackValue.Number(it.toDouble()) }
 
 
@@ -34,10 +31,10 @@ object Builtins {
     fun min(a: Double, b: Double) = listOf(StackValue.Number(listOf(a, b).min()))
     fun max(a: Double, b: Double) = listOf(StackValue.Number(listOf(a, b).max()))
 
-    @Doc("Push 1 if <value> is truthy, else 0")
+    /** Push 1 if <value> is truthy, else 0 */
     fun truthify(value: StackValue<*>) = listOf(StackValue.Number(if (truthy(value)) 1.0 else 0.0))
 
-    @Doc("If <which> is truthy, push <a>; else, push <b>")
+    /** If <which> is truthy, push <a>; else, push <b> */
     fun switchpush(which: StackValue<*>, a: StackValue<*>, b: StackValue<*>) = listOf(
         if (truthy(which)) {
             a
@@ -48,25 +45,25 @@ object Builtins {
 
 
     // String manipulation
-    @Doc("Concatenate two strings")
+    /** Concatenate two strings */
     fun add(a: String, b: String) = listOf(StackValue.Str(a + b))
 
-    @Doc("Repeat a string")
+    /** Repeat a string */
     fun mul(string: String, amount: Double) = listOf(StackValue.Str(string.repeat(amount.toInt())))
 
-    @Doc("Push the length of a string")
+    /** Push the length of a string */
     fun length(string: String) = listOf(StackValue.Number(string.length.toDouble()))
 
 
     // Functions
-    @Doc("Call a function")
+    /** Call a function */
     fun call(ctx: CallContext, function: List<Node>) = Function(function, mutableListOf(), ctx.function, ctx.node).let {
         Interpreter.run(it)
         it.stack
     }
 
     // Control flow
-    @Doc("Apply a transformation to every value on the stack")
+    /** Apply a transformation to every value on the stack */
     fun map(ctx: CallContext, function: List<Node>) = ctx.function.stack.map {
         Function(function, mutableListOf(it), ctx.function, ctx.node).also {
             Interpreter.run(it)
@@ -83,7 +80,7 @@ object Builtins {
     
 
     // Stack manipulation
-    @Doc("Pop a value from the parent stack and push it to this stack")
+    /** Pop a value from the parent stack and push it to this stack */
     fun take(ctx: CallContext) = ctx.function.parent?.function?.stack?.let {
         if (it.isEmpty()) {
             throw BuiltinRuntimeError("Parent stack is empty")
@@ -93,33 +90,33 @@ object Builtins {
     }
         ?: throw BuiltinRuntimeError("Cannot call take without a parent function")
 
-    @Doc("Duplicate the top value")
+    /** Duplicate the top value */
     fun dup(value: StackValue<*>) = listOf(value, value)
     
-    @Doc("Drop the top value")
+    /** Drop the top value */
     @Suppress("UNUSED_PARAMETER")
     fun drop(value: StackValue<*>) = listOf<StackValue<*>>()
 
-    @Doc("Rotate the stack. Positive <n> rotates left, negative rotates right.")
+    /** Rotate the stack. Positive <n> rotates left, negative rotates right. */
     fun rot(ctx: CallContext, n: Double) = listOf<StackValue<*>>().also {
         val rotated = ctx.function.stack.rotate(n.toInt())
         ctx.function.stack.clear()
         ctx.function.stack.addAll(rotated)
     }
 
-    @Doc("Swap the top two values on the stack")
+    /** Swap the top two values on the stack */
     fun swap(a: StackValue<*>, b: StackValue<*>) = listOf(b, a)
 
-    @Doc("Drop every value except for the top")
+    /** Drop every value except for the top */
     fun keeplast(ctx: CallContext) = listOf(ctx.function.stack.lastOrNull()).filterNotNull().also {
         ctx.function.stack.clear()
     }
 
-    @Doc("Duplicate the value below the top of the stack")
+    /** Duplicate the value below the top of the stack */
     fun over(a: StackValue<*>, b: StackValue<*>) = listOf(a, b, a)
 
 
-    // @Suppress("UNCHECKED_CAST")
+    // @Suppress("UNCHECKED_CAST") */
     // val builtins = Builtins::class.memberFunctions.filter {
     //     it.returnType.isSubtypeOf(typeOf<List<StackValue<*>>>())
     // }.groupBy { it.name }.mapValues { (name, overloads) ->
@@ -144,7 +141,7 @@ object Builtins {
     //                         typeOf<String>() -> StackValue.Str::class
     //                         typeOf<List<Node>>() -> StackValue.Function::class
     //                         typeOf<StackValue<*>>() -> Any::class
-    //                         else -> error("Builtin function ${overload.name} has invalid type ${paramType} for parameter ${param.name}!")
+    //                         else -> error("Builtin function ${overload.name} has invalid type ${paramType} for parameter ${param.name}! */
     //                     }
     //                 },
     //                 overload as KFunction<List<StackValue<*>>>,
