@@ -64,15 +64,11 @@ internal object PCLHighlighter : Highlighter {
     }
 
     override fun highlight(reader: LineReader, buffer: String): AttributedString {
-        if (buffer.startsWith(':')) {
-            return AttributedString(buffer, AttributedStyle.DEFAULT.faint())
-        }
         return highlightSource(buffer)
     }
 }
 
 fun repl(terminal: Terminal) {
-    Logger.getLogger("org.jline").level = Level.FINEST
     val reader = LineReaderBuilder.builder()
         .terminal(terminal)
         .highlighter(PCLHighlighter)
@@ -86,7 +82,6 @@ fun repl(terminal: Terminal) {
         style { AttributedStyle.DEFAULT }
         append(BuildConfig.VERSION)
         appendLine(".")
-        appendLine("Type :help for help.")
     }.println(terminal)
 
     while (true) {
