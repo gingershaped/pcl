@@ -53,7 +53,7 @@ object Parser {
                 }
                 in DIGIT_CHARS, '-' -> {
                     if (token == '-' && tokens.nextOrNull()?.also { tokens.previous() }?.value !in DIGIT_CHARS) {
-                        Token.Sub(position..position)
+                        Token.Symbol(position..position, Token.Symbol.Type.SUB)
                     } else {
                         val endPos: Int
                         buildString {
@@ -82,10 +82,10 @@ object Parser {
                         }
                     }
                 }
-                '+' -> Token.Add(position..position)
-                '/' -> Token.Div(position..position)
-                '*' -> Token.Mul(position..position)
-                '%' -> Token.Mod(position..position)
+                '+' -> Token.Symbol(position..position, Token.Symbol.Type.ADD)
+                '/' -> Token.Symbol(position..position, Token.Symbol.Type.DIV)
+                '*' -> Token.Symbol(position..position, Token.Symbol.Type.MUL)
+                '%' -> Token.Symbol(position..position, Token.Symbol.Type.MOD)
                 '{' -> Token.OpenFunction(position..position)
                 '}' -> Token.CloseFunction(position..position)
                 in WHITESPACE -> {
@@ -153,11 +153,7 @@ object Parser {
                     null
                 }
 
-                is Token.Add -> Node.Identifier(token.range, "add")
-                is Token.Sub -> Node.Identifier(token.range, "sub")
-                is Token.Div -> Node.Identifier(token.range, "div")
-                is Token.Mul -> Node.Identifier(token.range, "mul")
-                is Token.Mod -> Node.Identifier(token.range, "mod")
+                is Token.Symbol -> Node.Identifier(token.range, token.type.name.lowercase())
 
                 is Token.Whitespace -> null
                 is Token.Error -> throw ParseException(token.range, token.message)
@@ -177,11 +173,11 @@ sealed class Token {
     data class Str(override val range: IntRange, val value: String) : Token()
     data class Identifier(override val range: IntRange, val name: String) : Token()
 
-    data class Add(override val range: IntRange) : Token()
-    data class Sub(override val range: IntRange) : Token()
-    data class Div(override val range: IntRange) : Token()
-    data class Mul(override val range: IntRange) : Token()
-    data class Mod(override val range: IntRange) : Token()
+    data class Symbol(override val range: IntRange, val type: Type) : Token() {
+        enum class Type {
+            ADD, SUB, DIV, MUL, MOD
+        }
+    }
     data class OpenFunction(override val range: IntRange) : Token()
     data class CloseFunction(override val range: IntRange) : Token()
 
