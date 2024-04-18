@@ -26,6 +26,7 @@ object Builtins {
 
 
     // Logic
+    fun not(value: StackValue<*>) = listOf(StackValue.Number(if (!truthy(value)) 1.0 else 0.0))
     fun min(a: Double, b: Double) = listOf(StackValue.Number(listOf(a, b).min()))
     fun max(a: Double, b: Double) = listOf(StackValue.Number(listOf(a, b).max()))
 
