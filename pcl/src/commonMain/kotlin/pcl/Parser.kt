@@ -1,7 +1,5 @@
 package pcl
 
-import kotlin.runCatching
-import pcl.WHITESPACE
 
 internal val DIGIT_CHARS = '0'..'9'
 internal val WHITESPACE = "\n\t ".toCharArray()

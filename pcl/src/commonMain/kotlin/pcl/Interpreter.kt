@@ -1,7 +1,6 @@
 package pcl
 
 import java.lang.reflect.InvocationTargetException
-import kotlin.reflect.full.isSuperclassOf
 
 
 object Interpreter {
@@ -44,7 +43,7 @@ object Interpreter {
                         val argTypes = argValues.map { it::class }
                         val overload = builtin.overloads.singleOrNull {
                             it.argTypes.zip(argTypes).all { (expected, actual) ->
-                                expected.isSuperclassOf(actual)
+                                expected == StackValue::class || expected == actual
                             }
                         } ?: throw BuiltinException(node.range, function, "Builtin ${builtin.name} has no overload for ${if (argTypes.size == 1) "argument" else "arguments"} of type (${argTypes.map { it.simpleName }.joinToString(", ")})!")
 
