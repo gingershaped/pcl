@@ -1,41 +1,27 @@
 plugins {
-    kotlin("multiplatform")
-    id("com.google.devtools.ksp")
-    id("com.github.gmazzo.buildconfig") version "5.3.5"
     application
+    id("pcl.jvm-conventions")
+    id("pcl.js-conventions")
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.buildconfig)
 }
 
 group = ""
 version = "1.0"
 
-repositories {
-    mavenCentral()
-}
 
 kotlin {
-    jvm {
-        withJava()
-    }
-    jvmToolchain(17)
-
-    js {
-        browser {
-
-        }
-        binaries.executable()
-    }
-
     sourceSets {
         val commonMain by getting {
             dependencies {
-                implementation("com.github.ajalt.mordant:mordant:2.3.0")
+                implementation(libs.mordant)
             }
         }
         val jvmMain by getting {
             dependencies {
-                implementation("com.github.ajalt.clikt:clikt:4.2.2")
-                implementation("org.jline:jline-reader:3.25.1")
-                implementation("org.jline:jline-terminal-jansi:3.25.1")
+                implementation(libs.clikt)
+                implementation(libs.jline.reader)
+                implementation(libs.jline.jansi)
             }
         }
     }
