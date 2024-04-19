@@ -75,7 +75,7 @@ class PCL : CliktCommand() {
                     Interpreter.run(Parser.parse(Parser.tokenize(program)))
                 } catch (e: PclException) {
                     if (!quiet) {
-                        e.diagnostic(program).println(terminal)
+                        e.diagnostic(program).let(AttributedString::fromAnsi).println(terminal)
                         terminal.flush()
                     }
                     throw ProgramResult(-1)
@@ -88,7 +88,7 @@ class PCL : CliktCommand() {
                                 AttributedString("empty stack", AttributedStyle.DEFAULT.faint()).println(terminal)
                             } else {
                                 for (value in stack) {
-                                    value.highlight().println(terminal)
+                                    value.highlight().let(AttributedString::fromAnsi).println(terminal)
                                 }
                             }
                         }

@@ -21,8 +21,7 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
-                implementation(kotlin("reflect"))
-                // implementation(project(":annotationProcessor"))
+                implementation("com.github.ajalt.mordant:mordant:2.3.0")
             }
         }
         val jvmMain by getting {

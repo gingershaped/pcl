@@ -1,5 +1,11 @@
 package pcl
 
+import com.github.ajalt.mordant.rendering.TextStyles.dim
+import java.util.regex.Pattern
+import java.util.logging.LogManager
+import java.util.logging.Level
+import java.util.logging.Logger
+import kotlin.collections.lastIndex
 import org.jline.reader.LineReaderBuilder
 import org.jline.reader.LineReader
 import org.jline.reader.Highlighter
@@ -14,11 +20,6 @@ import org.jline.terminal.Terminal
 import org.jline.utils.AttributedString
 import org.jline.utils.AttributedStringBuilder
 import org.jline.utils.AttributedStyle
-import java.util.regex.Pattern
-import java.util.logging.LogManager
-import java.util.logging.Level
-import java.util.logging.Logger
-import kotlin.collections.lastIndex
 
 
 internal object PCLCompleter : Completer {
@@ -27,23 +28,14 @@ internal object PCLCompleter : Completer {
             for (overload in builtin.overloads) {
                 candidates.add(Candidate(
                     builtin.name,
-                    AttributedStringBuilder().apply {
-                        style(identifierStyle)
-                        append(builtin.name)
-                        style(AttributedStyle.DEFAULT)
+                    buildString {
+                        append(identifierStyle(builtin.name))
                         append("(")
                         append(overload.argTypes.map { it.simpleName }.joinToString(", "))
                         append(")")
-                    }.toAnsi(),
+                    },
                     "builtins",
-                    AttributedStringBuilder().apply {
-                        if (overload.doc != null) {
-                            append(overload.doc)
-                        } else {
-                            style(AttributedStyle.DEFAULT.faint())
-                            append("<no documentation>")
-                        }
-                    }.toAnsi(),
+                    overload.doc ?: dim("<no documentation>"),
                     null, null, true
                 ))
             }
@@ -64,7 +56,7 @@ internal object PCLHighlighter : Highlighter {
     }
 
     override fun highlight(reader: LineReader, buffer: String): AttributedString {
-        return highlightSource(buffer)
+        return AttributedString.fromAnsi(highlightSource(buffer))
     }
 }
 
@@ -97,14 +89,14 @@ fun repl(terminal: Terminal) {
         val stack = try {
             Interpreter.run(Parser.parse(tokens))
         } catch (e: PclException) {
-            e.diagnostic(line).println(terminal)
+            e.diagnostic(line).let(AttributedString::fromAnsi).println(terminal)
             continue
         }
         if (stack.isEmpty()) {
             AttributedString("stack is empty", AttributedStyle.DEFAULT.faint()).println(terminal)
         } else {
             for (value in stack) {
-                value.highlight().println(terminal)
+                value.highlight().let(AttributedString::fromAnsi).println(terminal)
             }
         }
     }
