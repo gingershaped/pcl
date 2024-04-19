@@ -10,7 +10,7 @@ version = "1.0"
 kotlin {
     jvm()
     sourceSets {
-        val jvmMain by getting {
+        val commonMain by getting {
             dependencies {
                 implementation("com.google.devtools.ksp:symbol-processing-api:$kspVersion")
             }
