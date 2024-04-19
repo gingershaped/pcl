@@ -1,6 +1,5 @@
 package pcl
 
-import java.lang.reflect.InvocationTargetException
 
 interface Environment {
     fun print(text: String)
@@ -52,16 +51,10 @@ class Interpreter(val environment: Environment) {
                         } ?: throw BuiltinException(node.range, function, "Builtin ${builtin.name} has no overload for ${if (argTypes.size == 1) "argument" else "arguments"} of type (${argTypes.map { it.simpleName }.joinToString(", ")})!")
 
                         overload.runCatching { impl(CallContext(this@Interpreter, function, node), argValues) }.onFailure {
-                            when (
-                                val error = if (it is InvocationTargetException) {
-                                    it.cause ?: it
-                                } else {
-                                    it
-                                }
-                            ) {
-                                is BuiltinRuntimeError -> throw BuiltinException(node.range, function, error.message!!)
-                                is PclException -> throw error
-                                else -> throw BuiltinBorkedException(node.range, function, "An internal exception occured in builtin ${node.name}!", error as? Exception)
+                            when (it) {
+                                is BuiltinRuntimeError -> throw BuiltinException(node.range, function, it.message!!)
+                                is PclException -> throw it
+                                else -> throw BuiltinBorkedException(node.range, function, "An internal exception occured in builtin ${node.name}!", it as? Exception)
                             }
                         }.onSuccess {
                             function.stack.addAll(it)
