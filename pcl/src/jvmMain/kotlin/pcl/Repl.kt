@@ -76,6 +76,8 @@ fun repl(terminal: Terminal) {
         appendLine(".")
     }.println(terminal)
 
+    val interpreter = Interpreter(JlineTerminalEnvironment(terminal))
+
     while (true) {
         val line = try {
             reader.readLine("PCL? ")
@@ -87,7 +89,7 @@ fun repl(terminal: Terminal) {
         }
         val tokens = Parser.tokenize(line)
         val stack = try {
-            Interpreter.run(Parser.parse(tokens))
+            interpreter.run(Parser.parse(tokens))
         } catch (e: PclException) {
             e.diagnostic(line).let(AttributedString::fromAnsi).println(terminal)
             continue

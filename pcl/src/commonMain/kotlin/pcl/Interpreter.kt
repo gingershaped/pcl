@@ -2,12 +2,16 @@ package pcl
 
 import java.lang.reflect.InvocationTargetException
 
+interface Environment {
+    fun print(text: String)
+    fun input(): String
+}
 
-object Interpreter {
-    fun run(body: List<Node>): List<StackValue<*>> {
-        val stack = mutableListOf<StackValue<*>>()
-        run(Function(body, stack, null))
-        return stack
+class Interpreter(val environment: Environment) {
+    fun run(body: List<Node>, stack: List<StackValue<*>>? = null): List<StackValue<*>> {
+        return (stack?.toMutableList() ?: mutableListOf<StackValue<*>>()).also {
+            run(Function(body, it, null))
+        }
     }
     fun run(function: Function) {
         for (node in function.body) {
@@ -47,7 +51,7 @@ object Interpreter {
                             }
                         } ?: throw BuiltinException(node.range, function, "Builtin ${builtin.name} has no overload for ${if (argTypes.size == 1) "argument" else "arguments"} of type (${argTypes.map { it.simpleName }.joinToString(", ")})!")
 
-                        overload.runCatching { impl(CallContext(function, node), argValues) }.onFailure {
+                        overload.runCatching { impl(CallContext(this@Interpreter, function, node), argValues) }.onFailure {
                             when (
                                 val error = if (it is InvocationTargetException) {
                                     it.cause ?: it

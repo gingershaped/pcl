@@ -20,9 +20,18 @@ import kotlin.system.exitProcess
 import kotlin.text.lowercase
 import java.nio.file.Paths
 import java.nio.file.Files
+import org.jline.terminal.Terminal
 import org.jline.terminal.TerminalBuilder
 import org.jline.utils.AttributedString
 import org.jline.utils.AttributedStyle
+import org.jline.reader.LineReader
+
+internal class JlineTerminalEnvironment(val terminal: Terminal) : Environment {
+    private val writer = terminal.writer()
+    private val reader = terminal.reader().buffered()
+    override fun print(text: String) = writer.println(text)
+    override fun input(): String = reader.readLine()
+}
 
 class PCL : CliktCommand() {
     private val source: String? by argument(help = "The script to run.")
@@ -57,48 +66,50 @@ class PCL : CliktCommand() {
         }
     private val quiet by option("-q", "--quiet", help = "Suppress all output, including data left on the stack and any errors.")
         .flag(default = false)
+
+    private fun runScript(terminal: Terminal, program: String) {
+        val interpreter = Interpreter(JlineTerminalEnvironment(terminal))
+        val stack = try {
+            interpreter.run(Parser.parse(Parser.tokenize(program)))
+        } catch (e: PclException) {
+            if (!quiet) {
+                e.diagnostic(program).let(AttributedString::fromAnsi).println(terminal)
+                terminal.flush()
+            }
+            throw ProgramResult(-1)
+        }
+        if (!quiet) {
+            when (stackFormat) {
+                StackFormat.HIDE -> Unit
+                StackFormat.FANCY -> {
+                    if (stack.isEmpty()) {
+                        AttributedString("empty stack", AttributedStyle.DEFAULT.faint()).println(terminal)
+                    } else {
+                        for (value in stack) {
+                            value.highlight().let(AttributedString::fromAnsi).println(terminal)
+                        }
+                    }
+                }
+                else -> println(stack.map { it.value.toString() }.joinToString(stackFormat.sep))
+            }
+        }
+        terminal.flush()
+    }
     
     override fun run() {
-        val terminal = TerminalBuilder.builder()
-            .build()
+        val terminal = TerminalBuilder.builder().build()
         val program = if (loadFile) {
             Paths.get(source).readText()
         } else { source }
 
-        terminal.use {
-            if (program != null) {
-                if (tokenize) {
-                    terminal.writer().println(Parser.tokenize(program))
-                    return
-                }
-                val stack = try {
-                    Interpreter.run(Parser.parse(Parser.tokenize(program)))
-                } catch (e: PclException) {
-                    if (!quiet) {
-                        e.diagnostic(program).let(AttributedString::fromAnsi).println(terminal)
-                        terminal.flush()
-                    }
-                    throw ProgramResult(-1)
-                }
-                if (!quiet) {
-                    when (stackFormat) {
-                        StackFormat.HIDE -> Unit
-                        StackFormat.FANCY -> {
-                            if (stack.isEmpty()) {
-                                AttributedString("empty stack", AttributedStyle.DEFAULT.faint()).println(terminal)
-                            } else {
-                                for (value in stack) {
-                                    value.highlight().let(AttributedString::fromAnsi).println(terminal)
-                                }
-                            }
-                        }
-                        else -> println(stack.map { it.value.toString() }.joinToString(stackFormat.sep))
-                    }
-                }
-                terminal.flush()
+        if (program != null) {
+            if (tokenize) {
+                terminal.writer().println(Parser.tokenize(program))
             } else {
-                repl(terminal)
+                runScript(terminal, program)
             }
+        } else {
+            repl(terminal)
         }
     }
 

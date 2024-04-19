@@ -4,7 +4,7 @@ import kotlin.reflect.KClass
 
 internal class BuiltinRuntimeError(message: String) : Exception(message)
 
-data class CallContext(val function: Function, val node: Node.Identifier)
+data class CallContext(val interpreter: Interpreter, val function: Function, val currentNode: Node.Identifier)
 
 data class BuiltinFunction(val name: String, val arity: Int, val takesContext: Boolean, val overloads: List<Overload>) {
     data class Overload(val argTypes: List<KClass<*>>, val impl: (ctx: CallContext, arguments: List<StackValue<*>>) -> List<StackValue<*>>, val doc: String?)
@@ -54,16 +54,16 @@ object Builtins {
 
     // Functions
     /** Call a function */
-    fun call(ctx: CallContext, function: List<Node>) = Function(function, mutableListOf(), ctx.function, ctx.node).let {
-        Interpreter.run(it)
+    fun call(ctx: CallContext, function: List<Node>) = Function(function, mutableListOf(), ctx.function, ctx.currentNode).let {
+        ctx.interpreter.run(it)
         it.stack
     }
 
     // Control flow
     /** Apply a transformation to every value on the stack */
     fun map(ctx: CallContext, function: List<Node>) = ctx.function.stack.map {
-        Function(function, mutableListOf(it), ctx.function, ctx.node).also {
-            Interpreter.run(it)
+        Function(function, mutableListOf(it), ctx.function, ctx.currentNode).also {
+            ctx.interpreter.run(it)
         }.stack.let {
             it.singleOrNull() ?: if (it.isEmpty()) {
                 throw BuiltinRuntimeError("No values returned from map transform")
