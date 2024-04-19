@@ -18,6 +18,13 @@ kotlin {
     }
     jvmToolchain(17)
 
+    js {
+        browser {
+
+        }
+        binaries.executable()
+    }
+
     sourceSets {
         val commonMain by getting {
             dependencies {
@@ -43,8 +50,8 @@ dependencies {
     add("kspCommonMainMetadata", processor)
     add("kspJvm", processor)
     add("kspJvmTest", processor)
-    // add("kspJs", processor)
-    // add("kspJsTest", processor)
+    add("kspJs", processor)
+    add("kspJsTest", processor)
 }
 
 tasks.named<JavaExec>("run") {
